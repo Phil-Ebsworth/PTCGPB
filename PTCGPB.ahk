@@ -3,12 +3,9 @@ version = Arturos PTCGP Bot
 CoordMode, Mouse, Screen
 SetTitleMatchMode, 3
 
-githubUser := "Arturo-1212"
-repoName := "PTCGPB"
-localVersion := "v6.3.13"
-scriptFolder := A_ScriptDir
-zipPath := A_Temp . "\update.zip"
-extractPath := A_Temp . "\update"
+#Include initialize.ahk
+#Include utils.ahk
+#Include gui.ahk
 
 if not A_IsAdmin
 {
@@ -24,62 +21,12 @@ CheckForUpdate()
 KillADBProcesses()
 
 global Instances, instanceStartDelay, jsonFileName, PacksText, runMain, scaleParam
+; Create or open the JSON files
+InitializeJsonFile() 
 
-totalFile := A_ScriptDir . "\json\total.json"
-backupFile := A_ScriptDir . "\json\total-backup.json"
-if FileExist(totalFile) ; Check if the file exists
-{
-	FileCopy, %totalFile%, %backupFile%, 1 ; Copy source file to target
-	if (ErrorLevel)
-		MsgBox, Failed to create %backupFile%. Ensure permissions and paths are correct.
-}
-FileDelete, %totalFile%
-packsFile := A_ScriptDir . "\json\Packs.json"
-backupFile := A_ScriptDir . "\json\Packs-backup.json"
-if FileExist(packsFile) ; Check if the file exists
-{
-	FileCopy, %packsFile%, %backupFile%, 1 ; Copy source file to target
-	if (ErrorLevel)
-		MsgBox, Failed to create %backupFile%. Ensure permissions and paths are correct.
-}
-InitializeJsonFile() ; Create or open the JSON file
-global FriendID
-; Create the main GUI for selecting number of instances
-IniRead, FriendID, Settings.ini, UserSettings, FriendID
-IniRead, waitTime, Settings.ini, UserSettings, waitTime, 5
-IniRead, Delay, Settings.ini, UserSettings, Delay, 250
-IniRead, folderPath, Settings.ini, UserSettings, folderPath, C:\Program Files\Netease
-IniRead, discordWebhookURL, Settings.ini, UserSettings, discordWebhookURL, ""
-IniRead, discordUserId, Settings.ini, UserSettings, discordUserId, ""
-IniRead, Columns, Settings.ini, UserSettings, Columns, 5
-IniRead, godPack, Settings.ini, UserSettings, godPack, Continue
-IniRead, Instances, Settings.ini, UserSettings, Instances, 1
-IniRead, instanceStartDelay, Settings.ini, UserSettings, instanceStartDelay, 0
-IniRead, defaultLanguage, Settings.ini, UserSettings, defaultLanguage, Scale125
-IniRead, SelectedMonitorIndex, Settings.ini, UserSettings, SelectedMonitorIndex, 1
-IniRead, swipeSpeed, Settings.ini, UserSettings, swipeSpeed, 300
-IniRead, deleteMethod, Settings.ini, UserSettings, deleteMethod, 3 Pack
-IniRead, runMain, Settings.ini, UserSettings, runMain, 1
-IniRead, heartBeat, Settings.ini, UserSettings, heartBeat, 0
-IniRead, heartBeatWebhookURL, Settings.ini, UserSettings, heartBeatWebhookURL, ""
-IniRead, heartBeatName, Settings.ini, UserSettings, heartBeatName, ""
-IniRead, nukeAccount, Settings.ini, UserSettings, nukeAccount, 0
-IniRead, packMethod, Settings.ini, UserSettings, packMethod, 0
-IniRead, TrainerCheck, Settings.ini, UserSettings, TrainerCheck, 0
-IniRead, FullArtCheck, Settings.ini, UserSettings, FullArtCheck, 0
-IniRead, RainbowCheck, Settings.ini, UserSettings, RainbowCheck, 0
-IniRead, CrownCheck, Settings.ini, UserSettings, CrownCheck, 0
-IniRead, ImmersiveCheck, Settings.ini, UserSettings, ImmersiveCheck, 0
-IniRead, PseudoGodPack, Settings.ini, UserSettings, PseudoGodPack, 0
-IniRead, minStars, Settings.ini, UserSettings, minStars, 0
-IniRead, Palkia, Settings.ini, UserSettings, Palkia, 0
-IniRead, Dialga, Settings.ini, UserSettings, Dialga, 0
-IniRead, Arceus, Settings.ini, UserSettings, Arceus, 1
-IniRead, Mew, Settings.ini, UserSettings, Mew, 0
-IniRead, Pikachu, Settings.ini, UserSettings, Pikachu, 0
-IniRead, Charizard, Settings.ini, UserSettings, Charizard, 0
-IniRead, Mewtwo, Settings.ini, UserSettings, Mewtwo, 0
-IniRead, slowMotion, Settings.ini, UserSettings, slowMotion, 0
+; Initialize the GUI
+global FriendID, waitTime, Delay, folderPath, discordWebhookURL, discordUserId, Columns, godPack, Instances, instanceStartDelay, defaultLanguage, SelectedMonitorIndex, swipeSpeed, deleteMethod, runMain, heartBeat, heartBeatWebhookURL, heartBeatName, nukeAccount, packMethod, TrainerCheck, FullArtCheck, RainbowCheck, CrownCheck, ImmersiveCheck, PseudoGodPack, minStars, Palkia, Dialga, Arceus, Mew, Pikachu, Charizard, Mewtwo, slowMotion
+initGui()
 
 Gui, Add, Text, x10 y10, Friend ID:
 ; Add input controls
@@ -473,21 +420,6 @@ Return
 GuiClose:
 ExitApp
 
-MonthToDays(year, month) {
-	static DaysInMonths := [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-	days := 0
-	Loop, % month - 1 {
-		days += DaysInMonths[A_Index]
-	}
-	if (month > 2 && IsLeapYear(year))
-		days += 1
-	return days
-}
-
-IsLeapYear(year) {
-	return (Mod(year, 4) = 0 && Mod(year, 100) != 0) || Mod(year, 400) = 0
-}
-
 LogToDiscord(message, screenshotFile := "", ping := false, xmlFile := "") {
 	global discordUserId, discordWebhookURL, friendCode, heartBeatWebhookURL
 	discordPing := discordUserId
@@ -603,254 +535,11 @@ CreateStatusMessage(Message, X := 0, Y := 80) {
 	}
 }
 
-; Global variable to track the current JSON file
-global jsonFileName := ""
-
-; Function to create or select the JSON file
-InitializeJsonFile() {
-	global jsonFileName
-	fileName := A_ScriptDir . "\json\Packs.json"
-	if FileExist(fileName)
-		FileDelete, %fileName%
-	if !FileExist(fileName) {
-		; Create a new file with an empty JSON array
-		FileAppend, [], %fileName%  ; Write an empty JSON array
-		jsonFileName := fileName
-		return
-	}
-}
-
-; Function to append a time and variable pair to the JSON file
-AppendToJsonFile(variableValue) {
-	global jsonFileName
-	if (jsonFileName = "") {
-		MsgBox, JSON file not initialized. Call InitializeJsonFile() first.
-		return
-	}
-
-	; Read the current content of the JSON file
-	FileRead, jsonContent, %jsonFileName%
-	if (jsonContent = "") {
-		jsonContent := "[]"
-	}
-
-	; Parse and modify the JSON content
-	jsonContent := SubStr(jsonContent, 1, StrLen(jsonContent) - 1) ; Remove trailing bracket
-	if (jsonContent != "[")
-		jsonContent .= ","
-	jsonContent .= "{""time"": """ A_Now """, ""variable"": " variableValue "}]"
-
-	; Write the updated JSON back to the file
-	FileDelete, %jsonFileName%
-	FileAppend, %jsonContent%, %jsonFileName%
-}
-
-; Function to sum all variable values in the JSON file
-SumVariablesInJsonFile() {
-	global jsonFileName
-	if (jsonFileName = "") {
-		return
-	}
-
-	; Read the file content
-	FileRead, jsonContent, %jsonFileName%
-	if (jsonContent = "") {
-		return 0
-	}
-
-	; Parse the JSON and calculate the sum
-	sum := 0
-	; Clean and parse JSON content
-	jsonContent := StrReplace(jsonContent, "[", "") ; Remove starting bracket
-	jsonContent := StrReplace(jsonContent, "]", "") ; Remove ending bracket
-	Loop, Parse, jsonContent, {, }
-	{
-		; Match each variable value
-		if (RegExMatch(A_LoopField, """variable"":\s*(-?\d+)", match)) {
-			sum += match1
-		}
-	}
-
-	; Write the total sum to a file called "total.json"
-
-	if(sum > 0) {
-		totalFile := A_ScriptDir . "\json\total.json"
-		totalContent := "{""total_sum"": " sum "}"
-		FileDelete, %totalFile%
-		FileAppend, %totalContent%, %totalFile%
-	}
-
-	return sum
-}
-
 KillADBProcesses() {
 	; Use AHK's Process command to close adb.exe
 	Process, Close, adb.exe
 	; Fallback to taskkill for robustness
 	RunWait, %ComSpec% /c taskkill /IM adb.exe /F /T,, Hide
-}
-
-CheckForUpdate() {
-	global githubUser, repoName, localVersion, zipPath, extractPath, scriptFolder
-	url := "https://api.github.com/repos/" githubUser "/" repoName "/releases/latest"
-
-	response := HttpGet(url)
-	if !response
-	{
-		MsgBox, Failed to fetch release info.
-		return
-	}
-	latestReleaseBody := FixFormat(ExtractJSONValue(response, "body"))
-	latestVersion := ExtractJSONValue(response, "tag_name")
-	zipDownloadURL := ExtractJSONValue(response, "zipball_url")
-	Clipboard := latestReleaseBody
-	if (zipDownloadURL = "" || !InStr(zipDownloadURL, "http"))
-	{
-		MsgBox, Failed to find the ZIP download URL in the release.
-		return
-	}
-
-	if (latestVersion = "")
-	{
-		MsgBox, Failed to retrieve version info.
-		return
-	}
-
-	if (VersionCompare(latestVersion, localVersion) > 0)
-	{
-		; Get release notes from the JSON (ensure this is populated earlier in the script)
-		releaseNotes := latestReleaseBody  ; Assuming `latestReleaseBody` contains the release notes
-
-		; Show a message box asking if the user wants to download
-		MsgBox, 4, Update Available %latestVersion%, %releaseNotes%`n`nDo you want to download the latest version?
-
-		; If the user clicks Yes (return value 6)
-		IfMsgBox, Yes
-		{
-			MsgBox, 64, Downloading..., Downloading the latest version...
-
-			; Proceed with downloading the update
-			URLDownloadToFile, %zipDownloadURL%, %zipPath%
-			if ErrorLevel
-			{
-				MsgBox, Failed to download update.
-				return
-			}
-			else {
-				MsgBox, Download complete. Extracting...
-
-				; Create a temporary folder for extraction
-				tempExtractPath := A_Temp "\PTCGPB_Temp"
-				FileCreateDir, %tempExtractPath%
-
-				; Extract the ZIP file into the temporary folder
-				RunWait, powershell -Command "Expand-Archive -Path '%zipPath%' -DestinationPath '%tempExtractPath%' -Force",, Hide
-
-				; Check if extraction was successful
-				if !FileExist(tempExtractPath)
-				{
-					MsgBox, Failed to extract the update.
-					return
-				}
-
-				; Get the first subfolder in the extracted folder
-				Loop, Files, %tempExtractPath%\*, D
-				{
-					extractedFolder := A_LoopFileFullPath
-					break
-				}
-
-				; Check if a subfolder was found and move its contents recursively to the script folder
-				if (extractedFolder)
-				{
-					MoveFilesRecursively(extractedFolder, scriptFolder)
-
-					; Clean up the temporary extraction folder
-					FileRemoveDir, %tempExtractPath%, 1
-					MsgBox, Update installed. Restarting...
-					Reload
-				}
-				else
-				{
-					MsgBox, Failed to find the extracted contents.
-					return
-				}
-			}
-		}
-		else
-		{
-			MsgBox, The update was canceled.
-			return
-		}
-	}
-	else
-	{
-		MsgBox, You are running the latest version (%localVersion%).
-	}
-}
-
-MoveFilesRecursively(srcFolder, destFolder) {
-	; Loop through all files and subfolders in the source folder
-	Loop, Files, % srcFolder . "\*", R
-	{
-		; Get the relative path of the file/folder from the srcFolder
-		relativePath := SubStr(A_LoopFileFullPath, StrLen(srcFolder) + 2)
-
-		; Create the corresponding destination path
-		destPath := destFolder . "\" . relativePath
-
-		; If it's a directory, create it in the destination folder
-		if (A_LoopIsDir)
-		{
-			; Ensure the directory exists, if not, create it
-			FileCreateDir, % destPath
-		}
-		else
-		{
-			if ((relativePath = "ids.txt" && FileExist(destPath)) || (relativePath = "usernames.txt" && FileExist(destPath)) || (relativePath = "discord.txt" && FileExist(destPath))) {
-                continue
-            }
-			if (relativePath = "usernames.txt" && FileExist(destPath)) {
-                continue
-            }
-			if (relativePath = "usernames.txt" && FileExist(destPath)) {
-                continue
-            }
-			; If it's a file, move it to the destination folder
-			; Ensure the directory exists before moving the file
-			FileCreateDir, % SubStr(destPath, 1, InStr(destPath, "\", 0, 0) - 1)
-			FileMove, % A_LoopFileFullPath, % destPath, 1
-		}
-	}
-}
-
-HttpGet(url) {
-	http := ComObjCreate("WinHttp.WinHttpRequest.5.1")
-	http.Open("GET", url, false)
-	http.Send()
-	return http.ResponseText
-}
-
-; Existing function to extract value from JSON
-ExtractJSONValue(json, key1, key2:="", ext:="") {
-	value := ""
-	json := StrReplace(json, """", "")
-	lines := StrSplit(json, ",")
-
-	Loop, % lines.MaxIndex()
-	{
-		if InStr(lines[A_Index], key1 ":") {
-			; Take everything after the first colon as the value
-			value := SubStr(lines[A_Index], InStr(lines[A_Index], ":") + 1)
-			if (key2 != "")
-			{
-				if InStr(lines[A_Index+1], key2 ":") && InStr(lines[A_Index+1], ext)
-					value := SubStr(lines[A_Index+1], InStr(lines[A_Index+1], ":") + 1)
-			}
-			break
-		}
-	}
-	return Trim(value)
 }
 
 FixFormat(text) {
