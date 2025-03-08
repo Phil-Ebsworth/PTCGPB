@@ -379,6 +379,6 @@ Return
 
 GuiClose:
 ExitApp
-    
+
 }
 
